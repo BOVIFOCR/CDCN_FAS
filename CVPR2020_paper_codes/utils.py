@@ -167,9 +167,21 @@ def get_err_threhold(fpr, tpr, threshold):
     return err, best_th
 
 
+# Bernardo
+def clear_data(labels, scores):
+    valid_idxs = np.where(np.isfinite(scores))[0]
+    if len(valid_idxs) == len(scores):
+        return labels, scores
+    valid_labels = []
+    valid_scores = []
+    for valid_idx in valid_idxs:
+        valid_labels.append(labels[valid_idx])
+        valid_scores.append(scores[valid_idx])
+    return valid_labels, valid_scores
+
 
 #def performances(dev_scores, dev_labels, test_scores, test_labels):
-def performances(map_score_val_filename, map_score_test_filename):
+def performances(map_score_val_filename, map_score_test_filename=None):
 
     # val 
     with open(map_score_val_filename, 'r') as file:
@@ -193,6 +205,8 @@ def performances(map_score_val_filename, map_score_test_filename):
         else:
             num_fake += 1
     
+    # print('\nval_scores:', val_scores, '\n')
+    val_labels, val_scores = clear_data(val_labels, val_scores)
     fpr,tpr,threshold = roc_curve(val_labels, val_scores, pos_label=1)
     val_err, val_threshold = get_err_threhold(fpr, tpr, threshold)
     
@@ -205,52 +219,54 @@ def performances(map_score_val_filename, map_score_test_filename):
     val_ACER = (val_APCER + val_BPCER) / 2.0
     
     
-    
-    # test 
-    with open(map_score_test_filename, 'r') as file2:
-        lines = file2.readlines()
-    test_scores = []
-    test_labels = []
-    data = []
-    count = 0.0
-    num_real = 0.0
-    num_fake = 0.0
-    for line in lines:
-        count += 1
-        tokens = line.split()
-        score = float(tokens[0])
-        label = float(tokens[1])    #label = int(tokens[1])
-        test_scores.append(score)
-        test_labels.append(label)
-        data.append({'map_score': score, 'label': label})
-        if label==1:
-            num_real += 1
-        else:
-            num_fake += 1
-    
-    # test based on val_threshold     
-    type1 = len([s for s in data if s['map_score'] <= val_threshold and s['label'] == 1])
-    type2 = len([s for s in data if s['map_score'] > val_threshold and s['label'] == 0])
-    
-    test_ACC = 1-(type1 + type2) / count
-    test_APCER = type2 / num_fake
-    test_BPCER = type1 / num_real
-    test_ACER = (test_APCER + test_BPCER) / 2.0
-    
-    
-    # test based on test_threshold     
-    fpr_test,tpr_test,threshold_test = roc_curve(test_labels, test_scores, pos_label=1)
-    err_test, best_test_threshold = get_err_threhold(fpr_test, tpr_test, threshold_test)
-    
-    type1 = len([s for s in data if s['map_score'] <= best_test_threshold and s['label'] == 1])
-    type2 = len([s for s in data if s['map_score'] > best_test_threshold and s['label'] == 0])
-    
-    test_threshold_ACC = 1-(type1 + type2) / count
-    test_threshold_APCER = type2 / num_fake
-    test_threshold_BPCER = type1 / num_real
-    test_threshold_ACER = (test_threshold_APCER + test_threshold_BPCER) / 2.0
-    
-    return val_threshold, best_test_threshold, val_ACC, val_ACER, test_ACC, test_APCER, test_BPCER, test_ACER, test_threshold_ACER
+    if map_score_test_filename is None:  # Bernardo
+        return val_threshold, val_ACC, val_APCER, val_BPCER, val_ACER
+    else:
+        # test 
+        with open(map_score_test_filename, 'r') as file2:
+            lines = file2.readlines()
+        test_scores = []
+        test_labels = []
+        data = []
+        count = 0.0
+        num_real = 0.0
+        num_fake = 0.0
+        for line in lines:
+            count += 1
+            tokens = line.split()
+            score = float(tokens[0])
+            label = float(tokens[1])    #label = int(tokens[1])
+            test_scores.append(score)
+            test_labels.append(label)
+            data.append({'map_score': score, 'label': label})
+            if label==1:
+                num_real += 1
+            else:
+                num_fake += 1
+        
+        # test based on val_threshold     
+        type1 = len([s for s in data if s['map_score'] <= val_threshold and s['label'] == 1])
+        type2 = len([s for s in data if s['map_score'] > val_threshold and s['label'] == 0])
+        
+        test_ACC = 1-(type1 + type2) / count
+        test_APCER = type2 / num_fake
+        test_BPCER = type1 / num_real
+        test_ACER = (test_APCER + test_BPCER) / 2.0
+        
+        
+        # test based on test_threshold     
+        fpr_test,tpr_test,threshold_test = roc_curve(test_labels, test_scores, pos_label=1)
+        err_test, best_test_threshold = get_err_threhold(fpr_test, tpr_test, threshold_test)
+        
+        type1 = len([s for s in data if s['map_score'] <= best_test_threshold and s['label'] == 1])
+        type2 = len([s for s in data if s['map_score'] > best_test_threshold and s['label'] == 0])
+        
+        test_threshold_ACC = 1-(type1 + type2) / count
+        test_threshold_APCER = type2 / num_fake
+        test_threshold_BPCER = type1 / num_real
+        test_threshold_ACER = (test_threshold_APCER + test_threshold_BPCER) / 2.0
+        
+        return val_threshold, best_test_threshold, val_ACC, val_ACER, test_ACC, test_APCER, test_BPCER, test_ACER, test_threshold_ACER
 
 
 
