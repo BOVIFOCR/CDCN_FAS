@@ -44,9 +44,9 @@ import torch.optim as optim
 import copy
 import pdb
 
+from losses import contrast_depth_conv, Contrast_depth_loss
 from utils import AvgrageMeter, accuracy, performances
-
-
+from plots import FeatureMap2Heatmap
 
 
 # Dataset root
@@ -95,142 +95,9 @@ else:
     raise Exception(f'Unknown hostname \'{hostname}\'')
 
 
-# feature  -->   [ batch, channel, height, width ]
-def FeatureMap2Heatmap( x, feature1, feature2, feature3, map_x, experiment_folder):
-    ## initial images 
-    feature_first_frame = x[0,:,:,:].cpu()    ## the middle frame 
 
-    heatmap = torch.zeros(feature_first_frame.size(1), feature_first_frame.size(2))
-    for i in range(feature_first_frame.size(0)):
-        heatmap += torch.pow(feature_first_frame[i,:,:],2).view(feature_first_frame.size(1),feature_first_frame.size(2))
 
-    heatmap = heatmap.data.numpy()
     
-    fig = plt.figure() 
-    ax = fig.add_subplot(111)
-    plt.imshow(heatmap)
-    plt.colorbar()
-    # plt.savefig(args.log+'/'+args.log + '_x_visual.jpg')
-    plt.savefig(experiment_folder+'/'+args.log + '_x_visual.jpg')
-    plt.close()
-
-
-    ## first feature
-    feature_first_frame = feature1[0,:,:,:].cpu()    ## the middle frame 
-    heatmap = torch.zeros(feature_first_frame.size(1), feature_first_frame.size(2))
-    for i in range(feature_first_frame.size(0)):
-        heatmap += torch.pow(feature_first_frame[i,:,:],2).view(feature_first_frame.size(1),feature_first_frame.size(2))
-
-    heatmap = heatmap.data.numpy()
-    
-    fig = plt.figure() 
-    ax = fig.add_subplot(111)
-    plt.imshow(heatmap)
-    plt.colorbar()
-    # plt.savefig(args.log+'/'+args.log + '_x_Block1_visual.jpg')
-    plt.savefig(experiment_folder+'/'+args.log + '_x_Block1_visual.jpg')
-    plt.close()
-    
-    ## second feature
-    feature_first_frame = feature2[0,:,:,:].cpu()    ## the middle frame 
-    heatmap = torch.zeros(feature_first_frame.size(1), feature_first_frame.size(2))
-    for i in range(feature_first_frame.size(0)):
-        heatmap += torch.pow(feature_first_frame[i,:,:],2).view(feature_first_frame.size(1),feature_first_frame.size(2))
-
-    heatmap = heatmap.data.numpy()
-    
-    fig = plt.figure() 
-    ax = fig.add_subplot(111)
-    plt.imshow(heatmap)
-    plt.colorbar()
-    # plt.savefig(args.log+'/'+args.log + '_x_Block2_visual.jpg')
-    plt.savefig(experiment_folder+'/'+args.log + '_x_Block2_visual.jpg')
-    plt.close()
-    
-    ## third feature
-    feature_first_frame = feature3[0,:,:,:].cpu()    ## the middle frame 
-    heatmap = torch.zeros(feature_first_frame.size(1), feature_first_frame.size(2))
-    for i in range(feature_first_frame.size(0)):
-        heatmap += torch.pow(feature_first_frame[i,:,:],2).view(feature_first_frame.size(1),feature_first_frame.size(2))
-
-    heatmap = heatmap.data.numpy()
-    
-    fig = plt.figure() 
-    ax = fig.add_subplot(111)
-    plt.imshow(heatmap)
-    plt.colorbar()
-    # plt.savefig(args.log+'/'+args.log + '_x_Block3_visual.jpg')
-    plt.savefig(experiment_folder+'/'+args.log + '_x_Block3_visual.jpg')
-    plt.close()
-    
-    ## third feature
-    heatmap2 = torch.pow(map_x[0,:,:],2)    ## the middle frame 
-
-    heatmap2 = heatmap2.data.cpu().numpy()
-    
-    fig = plt.figure() 
-    ax = fig.add_subplot(111)
-    plt.imshow(heatmap2)
-    plt.colorbar()
-    # plt.savefig(args.log+'/'+args.log + '_x_DepthMap_visual.jpg')
-    plt.savefig(experiment_folder+'/'+args.log + '_x_DepthMap_visual.jpg')
-    plt.close()
-    
-
-
-
-
-
-
-def contrast_depth_conv(input):
-    ''' compute contrast depth in both of (out, label) '''
-    '''
-        input  32x32
-        output 8x32x32
-    '''
-    
-
-    kernel_filter_list =[
-                        [[1,0,0],[0,-1,0],[0,0,0]], [[0,1,0],[0,-1,0],[0,0,0]], [[0,0,1],[0,-1,0],[0,0,0]],
-                        [[0,0,0],[1,-1,0],[0,0,0]], [[0,0,0],[0,-1,1],[0,0,0]],
-                        [[0,0,0],[0,-1,0],[1,0,0]], [[0,0,0],[0,-1,0],[0,1,0]], [[0,0,0],[0,-1,0],[0,0,1]]
-                        ]
-    
-    kernel_filter = np.array(kernel_filter_list, np.float32)
-    
-    kernel_filter = torch.from_numpy(kernel_filter.astype(np.float32)).float().cuda()
-    # weights (in_channel, out_channel, kernel, kernel)
-    kernel_filter = kernel_filter.unsqueeze(dim=1)
-    
-    input = input.unsqueeze(dim=1).expand(input.shape[0], 8, input.shape[1],input.shape[2])
-    
-    contrast_depth = F.conv2d(input, weight=kernel_filter, groups=8)  # depthwise conv
-    
-    return contrast_depth
-
-
-class Contrast_depth_loss(nn.Module):    # Pearson range [-1, 1] so if < 0, abs|loss| ; if >0, 1- loss
-    def __init__(self):
-        super(Contrast_depth_loss,self).__init__()
-        return
-    def forward(self, out, label): 
-        '''
-        compute contrast depth in both of (out, label),
-        then get the loss of them
-        tf.atrous_convd match tf-versions: 1.4
-        '''
-        contrast_out = contrast_depth_conv(out)
-        contrast_label = contrast_depth_conv(label)
-        
-        
-        criterion_MSE = nn.MSELoss().cuda()
-    
-        loss = criterion_MSE(contrast_out, contrast_label)
-        #loss = torch.pow(contrast_out - contrast_label, 2)
-        #loss = torch.mean(loss)
-    
-        return loss
-
 
 
 
@@ -353,7 +220,7 @@ def train_test():
             if i % echo_batches == echo_batches-1:    # print every 50 mini-batches
                 
                 # visualization
-                FeatureMap2Heatmap(x_input, x_Block1, x_Block2, x_Block3, map_x, experiment_folder)
+                FeatureMap2Heatmap(args, x_input, x_Block1, x_Block2, x_Block3, map_x, experiment_folder)
 
                 # log written
                 print('epoch:%d, mini-batch:%3d, lr=%f, Absolute_Depth_loss= %.4f, Contrastive_Depth_loss= %.4f' % (epoch + 1, i + 1, lr,  loss_absolute.avg, loss_contra.avg))
