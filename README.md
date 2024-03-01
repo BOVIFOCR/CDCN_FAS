@@ -24,7 +24,7 @@ pip3 install -r requirements.txt
 
 #### 3. Train model:
 ```
-cd CDCN_FAS/CVPR2020_paper_codes
+cd CVPR2020_paper_codes
 export CUDA_VISIBLE_DEVICES=0; python train_CDCN_1RandomFrame.py
 ```
 
