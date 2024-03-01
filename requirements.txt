@@ -60,3 +60,4 @@ yacs
 zipp==3.16.2
 matplotlib==3.8.2
 pandas==2.2.0
+imgaug==0.4.0
