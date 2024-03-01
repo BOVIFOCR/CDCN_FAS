@@ -24,14 +24,14 @@ pip3 install -r requirements.txt
 
 #### 3. Train model:
 ```
-export CUDA_VISIBLE_DEVICES=0; python train_3dpcnet_chamfer_loss.py --config configs/oulu-npu_frames_3d_hrn_r18.py
+export CUDA_VISIBLE_DEVICES=0; python train_CDCN_1RandomFrame.py
 ```
 
 <br> <br> <be> 
 
 
 
-# CDCN
+# CDCN (Original)
 
 Main code of [**CVPR2020 paper "Searching Central Difference Convolutional Networks for Face Anti-Spoofing"**  ](https://arxiv.org/pdf/2003.04092v1.pdf) 
 
