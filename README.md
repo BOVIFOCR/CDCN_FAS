@@ -9,7 +9,7 @@ cd CDCN_FAS
 #### 2. Create conda env and install python libs:
 ```
 export CONDA_ENV=bjgbiesseck_cdcn_py39
-conda create -n $CONDA_ENV python=3.9
+conda create -y -n $CONDA_ENV python=3.9
 conda activate $CONDA_ENV
 conda env config vars set CUDA_HOME="/usr/local/cuda-11.6"; conda deactivate; conda activate $CONDA_ENV
 conda env config vars set LD_LIBRARY_PATH="$CUDA_HOME/lib64"; conda deactivate; conda activate $CONDA_ENV
