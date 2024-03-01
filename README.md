@@ -2,13 +2,13 @@
 
 #### 1. Clone this repo:
 ```
-git clone https://github.com/BOVIFOCR/3DPC-Net.git
-cd 3DPC-Net/face_anti_spoofing
+git clone https://github.com/BOVIFOCR/CDCN_FAS.git
+cd CDCN_FAS/CVPR2020_paper_codes
 ```
 
 #### 2. Create conda env and install python libs:
 ```
-export CONDA_ENV=bjgbiesseck_3dpcnet_py39
+export CONDA_ENV=bjgbiesseck_cdcn_py39
 conda create -n $CONDA_ENV python=3.9
 conda activate $CONDA_ENV
 conda env config vars set CUDA_HOME="/usr/local/cuda-11.6"; conda deactivate; conda activate $CONDA_ENV
