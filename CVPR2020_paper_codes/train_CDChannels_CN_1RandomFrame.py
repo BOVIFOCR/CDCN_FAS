@@ -28,7 +28,7 @@ import math
 from torch.utils.data import Dataset, DataLoader
 from torchvision import transforms
 from datetime import datetime
-
+import platform
 
 from models.CDCNs import Conv2d_cd, CDCN, CDCNpp
 from models.CDChannels_CNs import Conv2d_cd_channels, CDChannels_CNpp
@@ -48,32 +48,51 @@ from utils import AvgrageMeter, accuracy, performances
 
 
 
+
 # Dataset root
 # train_image_dir = '/wrk/yuzitong/DONOTREMOVE/OULU/Train_images/'        
 # val_image_dir = '/wrk/yuzitong/DONOTREMOVE/OULU/Dev_images/'     
 # test_image_dir = '/wrk/yuzitong/DONOTREMOVE/OULU/Test_images/'   
-train_image_dir = '/home/rgpa18/ssan_datasets/original/oulu-npu/train/'
-val_image_dir = '/home/rgpa18/ssan_datasets/original/oulu-npu/dev/'     
-test_image_dir = '/home/rgpa18/ssan_datasets/original/oulu-npu/test/'   
 
 # map_dir = '/wrk/yuzitong/DONOTREMOVE/OULU/IJCB_re/OULUtrain_images/'
 # val_map_dir = '/wrk/yuzitong/DONOTREMOVE/OULU/IJCB_re/OULUdev_images/'
 # test_map_dir = '/wrk/yuzitong/DONOTREMOVE/OULU/IJCB_re/OULUtest_images/'
-map_dir = '/home/rgpa18/ssan_datasets/original/oulu-npu/depth/train/'   
-val_map_dir = '/home/rgpa18/ssan_datasets/original/oulu-npu/depth/dev/' 
-test_map_dir = '/home/rgpa18/ssan_datasets/original/oulu-npu/depth/test/' 
 
 # train_list = '/wrk/yuzitong/DONOTREMOVE/OULU/OULU_Protocols/Protocol_1/Train.txt'
 # val_list = '/wrk/yuzitong/DONOTREMOVE/OULU/OULU_Protocols/Protocol_1/Dev.txt'
 # test_list =  '/wrk/yuzitong/DONOTREMOVE/OULU/OULU_Protocols/Protocol_1/Test.txt'
-train_list = '/home/rgpa18/ssan_datasets/original/oulu-npu/Protocols/Protocol_1/Train.txt'
-val_list = '/home/rgpa18/ssan_datasets/original/oulu-npu/Protocols/Protocol_1/Dev.txt'
-test_list =  '/home/rgpa18/ssan_datasets/original/oulu-npu/Protocols/Protocol_1/Test.txt'
-# train_list = '/home/rgpa18/ssan_datasets/original/oulu-npu/Protocols/Protocol_2/Train.txt'
-# val_list = '/home/rgpa18/ssan_datasets/original/oulu-npu/Protocols/Protocol_2/Dev.txt'
-# test_list =  '/home/rgpa18/ssan_datasets/original/oulu-npu/Protocols/Protocol_2/Test.txt'
 
 
+hostname = platform.node()
+
+if hostname == 'duo':
+    train_image_dir = '/home/rgpa18/ssan_datasets/original/oulu-npu/train/'
+    val_image_dir = '/home/rgpa18/ssan_datasets/original/oulu-npu/dev/'     
+    test_image_dir = '/home/rgpa18/ssan_datasets/original/oulu-npu/test/'   
+
+    map_dir = '/home/rgpa18/ssan_datasets/original/oulu-npu/depth/train/'   
+    val_map_dir = '/home/rgpa18/ssan_datasets/original/oulu-npu/depth/dev/' 
+    test_map_dir = '/home/rgpa18/ssan_datasets/original/oulu-npu/depth/test/' 
+
+    train_list = '/home/rgpa18/ssan_datasets/original/oulu-npu/Protocols/Protocol_1/Train.txt'
+    val_list = '/home/rgpa18/ssan_datasets/original/oulu-npu/Protocols/Protocol_1/Dev.txt'
+    test_list =  '/home/rgpa18/ssan_datasets/original/oulu-npu/Protocols/Protocol_1/Test.txt'
+
+elif hostname == 'daugman':
+    train_image_dir = '/groups/bjgbiesseck/datasets/liveness/oulu-npu/train/'
+    val_image_dir = '/groups/bjgbiesseck/datasets/liveness/oulu-npu/dev/'     
+    test_image_dir = '/groups/bjgbiesseck/datasets/liveness/oulu-npu/test/'   
+
+    map_dir = '/groups/bjgbiesseck/datasets/liveness/oulu-npu/depth/train/'   
+    val_map_dir = '/groups/bjgbiesseck/datasets/liveness/oulu-npu/depth/dev/' 
+    test_map_dir = '/groups/bjgbiesseck/datasets/liveness/oulu-npu/depth/test/' 
+
+    train_list = '/groups/bjgbiesseck/datasets/liveness/oulu-npu/Protocols/Protocol_1/Train.txt'
+    val_list = '/groups/bjgbiesseck/datasets/liveness/oulu-npu/Protocols/Protocol_1/Dev.txt'
+    test_list =  '/groups/bjgbiesseck/datasets/liveness/oulu-npu/Protocols/Protocol_1/Test.txt'
+
+else:
+    raise Exception(f'Unknown hostname \'{hostname}\'')
 
 
 # feature  -->   [ batch, channel, height, width ]
@@ -497,9 +516,12 @@ def train_test():
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="save quality using landmarkpose model")
-    parser.add_argument('--gpu', type=int, default=3, help='the gpu id used for predict')
+
+    # parser.add_argument('--gpu', type=int, default=3, help='the gpu id used for predict')
+    parser.add_argument('--gpu', type=int, default=0, help='the gpu id used for predict')
+
     parser.add_argument('--lr', type=float, default=0.0001, help='initial learning rate')  
-    parser.add_argument('--batchsize', type=int, default=4, help='initial batchsize')  
+    parser.add_argument('--batchsize', type=int, default=8, help='initial batchsize')  
     parser.add_argument('--step_size', type=int, default=500, help='how many epochs lr decays once')  # 500 
     parser.add_argument('--gamma', type=float, default=0.5, help='gamma of optim.lr_scheduler.StepLR, decay of lr')
     parser.add_argument('--echo_batches', type=int, default=50, help='how many batches display once')  # 50
