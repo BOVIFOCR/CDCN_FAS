@@ -19,10 +19,10 @@ conda env config vars set CUDA_HOME="/usr/local/cuda-11.6"; conda deactivate; co
 conda env config vars set LD_LIBRARY_PATH="$CUDA_HOME/lib64"; conda deactivate; conda activate $CONDA_ENV
 conda env config vars set PATH="$CUDA_HOME:$CUDA_HOME/bin:$LD_LIBRARY_PATH:$PATH"; conda deactivate; conda activate $CONDA_ENV
 
-conda install pytorch=1.13.0 torchvision pytorch-cuda=11.6 -c pytorch -c nvidia
-conda install -c fvcore -c iopath -c conda-forge fvcore iopath
-conda install -c bottler nvidiacub
-conda install pytorch3d -c pytorch3d
+conda install -y pytorch=1.13.0 torchvision pytorch-cuda=11.6 -c pytorch -c nvidia
+conda install -y -c fvcore -c iopath -c conda-forge fvcore iopath
+conda install -y -c bottler nvidiacub
+conda install -y pytorch3d -c pytorch3d
 pip3 install -r requirements.txt
 ```
 
