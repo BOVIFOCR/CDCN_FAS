@@ -1,12 +1,16 @@
 ## CONFIG ENV (BOVIFOCR)
 
-#### 1. Clone this repo:
+#### 1. System requirements:
+- Conda
+- CUDA=11.6
+
+#### 2. Clone this repo:
 ```
 git clone https://github.com/BOVIFOCR/CDCN_FAS.git
 cd CDCN_FAS
 ```
 
-#### 2. Create conda env and install python libs:
+#### 3. Create conda env and install python libs:
 ```
 export CONDA_ENV=bjgbiesseck_cdcn_py39
 conda create -y -n $CONDA_ENV python=3.9
@@ -22,7 +26,7 @@ conda install pytorch3d -c pytorch3d
 pip3 install -r requirements.txt
 ```
 
-#### 3. Train model:
+#### 4. Train model:
 ```
 cd CVPR2020_paper_codes
 export CUDA_VISIBLE_DEVICES=0; python train_CDCN_1RandomFrame.py
