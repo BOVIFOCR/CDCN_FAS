@@ -269,6 +269,54 @@ def performances(map_score_val_filename, map_score_test_filename=None):
         return val_threshold, best_test_threshold, val_ACC, val_ACER, test_ACC, test_APCER, test_BPCER, test_ACER, test_threshold_ACER
 
 
+# Bernardo
+def performances_threshold(map_score_test_filename, val_threshold):
+    # test 
+    with open(map_score_test_filename, 'r') as file2:
+        lines = file2.readlines()
+    test_scores = []
+    test_labels = []
+    data = []
+    count = 0.0
+    num_real = 0.0
+    num_fake = 0.0
+    for line in lines:
+        count += 1
+        tokens = line.split()
+        score = float(tokens[0])
+        label = float(tokens[1])    #label = int(tokens[1])
+        test_scores.append(score)
+        test_labels.append(label)
+        data.append({'map_score': score, 'label': label})
+        if label==1:
+            num_real += 1
+        else:
+            num_fake += 1
+    
+    # test based on val_threshold     
+    type1 = len([s for s in data if s['map_score'] <= val_threshold and s['label'] == 1])
+    type2 = len([s for s in data if s['map_score'] > val_threshold and s['label'] == 0])
+    
+    test_ACC = 1-(type1 + type2) / count
+    test_APCER = type2 / num_fake
+    test_BPCER = type1 / num_real
+    test_ACER = (test_APCER + test_BPCER) / 2.0
+    
+    
+    # test based on test_threshold     
+    fpr_test,tpr_test,threshold_test = roc_curve(test_labels, test_scores, pos_label=1)
+    err_test, best_test_threshold = get_err_threhold(fpr_test, tpr_test, threshold_test)
+    
+    type1 = len([s for s in data if s['map_score'] <= best_test_threshold and s['label'] == 1])
+    type2 = len([s for s in data if s['map_score'] > best_test_threshold and s['label'] == 0])
+    
+    test_threshold_ACC = 1-(type1 + type2) / count
+    test_threshold_APCER = type2 / num_fake
+    test_threshold_BPCER = type1 / num_real
+    test_threshold_ACER = (test_threshold_APCER + test_threshold_BPCER) / 2.0
+    
+    # return val_threshold, best_test_threshold, val_ACC, val_ACER, test_ACC, test_APCER, test_BPCER, test_ACER, test_threshold_ACER
+    return test_ACC, test_APCER, test_BPCER, test_ACER
 
 
 

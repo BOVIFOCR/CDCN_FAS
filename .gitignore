@@ -164,4 +164,7 @@ cython_debug/
 *.swp
 __pycache__/*
 logs/*
+*/logs/*
+*
+
 
