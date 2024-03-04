@@ -17,6 +17,7 @@ Copyright (c) 2020
 '''
 
 from __future__ import print_function, division
+import os, sys
 import torch
 import matplotlib.pyplot as plt
 import argparse,os
@@ -158,6 +159,8 @@ def train_one_epoch(args, epoch, lr, model, optimizer, criterion_absolute_loss, 
 def eval_model(split, args, epoch, model, dataloader_val, val_threshold, optimizer, criterion_absolute_loss, criterion_contrastive_loss, experiment_folder, log_file):
     # print('Evaluating train...')
     # print(f'Evaluating {split}...')
+    loss_absolute = AvgrageMeter()
+    loss_contra =  AvgrageMeter()
     model.eval()
     with torch.no_grad():
         # val for threshold
@@ -178,6 +181,14 @@ def eval_model(split, args, epoch, model, dataloader_val, val_threshold, optimiz
             map_score = 0.0
             for frame_t in range(inputs.shape[1]):
                 map_x, embedding, x_Block1, x_Block2, x_Block3, x_input =  model(inputs[:,frame_t,:,:,:])
+
+                map_label = train_maps[:,frame_t,:,:]
+                absolute_loss = criterion_absolute_loss(map_x, map_label)
+                contrastive_loss = criterion_contrastive_loss(map_x, map_label)
+                loss = absolute_loss + contrastive_loss
+                n = 1
+                loss_absolute.update(absolute_loss.data, n)
+                loss_contra.update(contrastive_loss.data, n)
 
                 score_norm = torch.sum(map_x)/torch.sum(train_maps[:,frame_t,:,:])
                 map_score += score_norm
@@ -200,7 +211,7 @@ def eval_model(split, args, epoch, model, dataloader_val, val_threshold, optimiz
             train_ACC, train_APCER, train_BPCER, train_ACER = performances_threshold(map_score_train_filename, val_threshold)
 
         # print('epoch:%d, Train: train_threshold=%.4f, train_ACC=%.4f, train_APCER=%.4f, train_BPCER=%.4f, train_ACER=%.4f' % (epoch+1, train_threshold, train_ACC, train_APCER, train_BPCER, train_ACER))
-        log_msg = 'epoch:%d, Eval %s - threshold=%.4f, ACC=%.4f, APCER=%.4f, BPCER=%.4f, ACER=%.4f' % (epoch+1, split.upper(), val_threshold, train_ACC, train_APCER, train_BPCER, train_ACER)
+        log_msg = 'epoch:%d, Eval %s - Absolute_Depth_loss=%.4f, Contrastive_Depth_loss=%.4f, threshold=%.4f, ACC=%.4f, APCER=%.4f, BPCER=%.4f, ACER=%.4f' % (epoch+1, split.upper(), loss_absolute.avg, loss_contra.avg, val_threshold, train_ACC, train_APCER, train_BPCER, train_ACER)
         print(log_msg)
         # log_file.write('\nepoch:%d, Train: train_threshold=%.4f, train_ACC=%.4f, train_APCER=%.4f, train_BPCER=%.4f, train_ACER=%.4f' % (epoch+1, train_threshold, train_ACC, train_APCER, train_BPCER, train_ACER))
         log_file.write(log_msg + '\n')
