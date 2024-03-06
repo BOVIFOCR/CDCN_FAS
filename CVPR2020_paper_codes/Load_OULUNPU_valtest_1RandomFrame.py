@@ -72,10 +72,19 @@ class Normaliztion_valtest(object):
         same as mxnet, normalize into [-1, 1]
         image = (image - 127.5)/128
     """
+    # original (WITHOUT val_map_x normalization)
+    # def __call__(self, sample):
+    #     image_x, val_map_x, spoofing_label = sample['image_x'],sample['val_map_x'] ,sample['spoofing_label']
+    #     new_image_x = (image_x - 127.5)/128     # [-1,1]
+    #     return {'image_x': new_image_x, 'val_map_x': val_map_x , 'spoofing_label': spoofing_label}
+
+    # Bernardo (WITH val_map_x normalization, as training Normaliztion())
     def __call__(self, sample):
         image_x, val_map_x, spoofing_label = sample['image_x'],sample['val_map_x'] ,sample['spoofing_label']
         new_image_x = (image_x - 127.5)/128     # [-1,1]
-        return {'image_x': new_image_x, 'val_map_x': val_map_x , 'spoofing_label': spoofing_label}
+        new_val_map_x = val_map_x/255.0         # [0,1]  # added by Bernardo
+        # return {'image_x': new_image_x, 'val_map_x': val_map_x , 'spoofing_label': spoofing_label}
+        return {'image_x': new_image_x, 'val_map_x': new_val_map_x , 'spoofing_label': spoofing_label}
 
 
 class ToTensor_valtest(object):
