@@ -85,12 +85,13 @@ class Conv2d_cd_channels(nn.Module):
             kernel_diff2 = kernel_diff2[:, :, None, None]
             # kernel_diff3 = kernel_diff3[:, :, None, None]
 
-            out_diff1 = F.conv2d(input=x, weight=kernel_diff1, bias=self.conv.bias, stride=self.conv.stride, padding=0, groups=self.conv.groups)
+            # out_diff1 = F.conv2d(input=x, weight=kernel_diff1, bias=self.conv.bias, stride=self.conv.stride, padding=0, groups=self.conv.groups)
             out_diff2 = F.conv2d(input=x, weight=kernel_diff2, bias=self.conv.bias, stride=self.conv.stride, padding=0, groups=self.conv.groups)
             # out_diff3 = F.conv2d(input=x, weight=kernel_diff2, bias=self.conv.bias, stride=self.conv.stride, padding=0, groups=self.conv.groups)
 
             # return out_normal - (1/3*self.theta * out_diff1) - (1/3*self.theta * out_diff2) - (1/3*self.theta * out_diff3)
-            return out_normal - (self.theta * (out_diff1 - out_diff2))
+            # return out_normal - (self.theta * (out_diff1 + out_diff2))
+            return out_normal - (self.theta * (out_diff2))
             # return out_normal - (self.theta * out_diff1)
 
 
