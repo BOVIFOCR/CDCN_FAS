@@ -44,6 +44,7 @@ import torch.nn as nn
 import torch.optim as optim
 import copy
 import pdb
+from torch.utils.tensorboard import SummaryWriter
 
 from losses import contrast_depth_conv, Contrast_depth_loss
 from utils import AvgrageMeter, accuracy, performances, performances_threshold
@@ -98,9 +99,16 @@ else:
 
 
 
-def train_one_epoch(args, epoch, lr, model, optimizer, criterion_absolute_loss, criterion_contrastive_loss, experiment_folder, log_file):
+def train_one_epoch(args, epoch, lr, model, optimizer, criterion_absolute_loss, criterion_contrastive_loss, experiment_folder, writer, log_file):
+    start_epoch_time = datetime.now().strftime('%Y-%m-%d_%H-%M-%S')
+    log_msg = 'epoch: %d, Starting at %s' % (epoch + 1, start_epoch_time)
+    print(log_msg)
+    log_file.write(log_msg + '\n')
+    log_file.flush()
+
     loss_absolute = AvgrageMeter()
     loss_contra =  AvgrageMeter()
+    loss_total =  AvgrageMeter()
     #top5 = utils.AvgrageMeter()
     
     ###########################################
@@ -134,6 +142,7 @@ def train_one_epoch(args, epoch, lr, model, optimizer, criterion_absolute_loss, 
         n = inputs.size(0)
         loss_absolute.update(absolute_loss.data, n)
         loss_contra.update(contrastive_loss.data, n)
+        loss_total.update(loss.data, n)
     
         echo_batches = args.echo_batches
         if i % echo_batches == echo_batches-1:    # print every 50 mini-batches
@@ -141,14 +150,19 @@ def train_one_epoch(args, epoch, lr, model, optimizer, criterion_absolute_loss, 
             FeatureMap2Heatmap(args, x_input, x_Block1, x_Block2, x_Block3, map_x, experiment_folder)
 
             # log written
-            log_msg = 'epoch:%d, mini-batch:%3d, lr=%f, Absolute_Depth_loss=%.4f, Contrastive_Depth_loss=%.4f' % (epoch+1, i+1, lr, loss_absolute.avg, loss_contra.avg)
+            log_msg = 'epoch: %d, mini-batch:%3d, lr=%f, Absolute_Depth_loss=%.4f, Contrastive_Depth_loss=%.4f, Total_loss=%.4f' % (epoch+1, i+1, lr, loss_absolute.avg, loss_contra.avg, loss_total.avg)
             print(log_msg)
             # log_file.write(log_msg + '\n')
             # log_file.flush()
         # break
 
+    if not writer is None:
+        writer.add_scalar("training/training_abs_depth_loss", loss_absolute.avg, epoch+1)
+        writer.add_scalar("training/training_cont_depth_loss", loss_contra.avg, epoch+1)
+        writer.add_scalar("training/training_total_loss", loss_total.avg, epoch+1)
+
     # whole epoch average
-    log_msg = 'epoch:%d, Train: Absolute_Depth_loss= %.4f, Contrastive_Depth_loss= %.4f' % (epoch + 1, loss_absolute.avg, loss_contra.avg)
+    log_msg = 'epoch: %d, Train: Absolute_Depth_loss=%.4f, Contrastive_Depth_loss=%.4f, Total_loss=%.4f' % (epoch + 1, loss_absolute.avg, loss_contra.avg, loss_total.avg)
     print(log_msg)
     log_file.write(log_msg + '\n')
     log_file.flush()
@@ -156,11 +170,12 @@ def train_one_epoch(args, epoch, lr, model, optimizer, criterion_absolute_loss, 
 
 
 
-def eval_model(split, args, epoch, model, dataloader_val, val_threshold, optimizer, criterion_absolute_loss, criterion_contrastive_loss, experiment_folder, log_file):
+def eval_model(split, args, epoch, model, dataloader_val, val_threshold, optimizer, criterion_absolute_loss, criterion_contrastive_loss, experiment_folder, writer, log_file):
     # print('Evaluating train...')
     # print(f'Evaluating {split}...')
     loss_absolute = AvgrageMeter()
     loss_contra =  AvgrageMeter()
+    loss_total =  AvgrageMeter()
     model.eval()
     with torch.no_grad():
         # val for threshold
@@ -189,6 +204,7 @@ def eval_model(split, args, epoch, model, dataloader_val, val_threshold, optimiz
                 n = 1
                 loss_absolute.update(absolute_loss.data, n)
                 loss_contra.update(contrastive_loss.data, n)
+                loss_total.update(loss.data, n)
 
                 score_norm = torch.sum(map_x)/torch.sum(train_maps[:,frame_t,:,:])
                 map_score += score_norm
@@ -210,8 +226,21 @@ def eval_model(split, args, epoch, model, dataloader_val, val_threshold, optimiz
         else:
             train_ACC, train_APCER, train_BPCER, train_ACER = performances_threshold(map_score_train_filename, val_threshold)
 
+        if not writer is None:
+            writer.add_scalar(f"{split}/{split}_abs_depth_loss", loss_absolute.avg, epoch+1)
+            writer.add_scalar(f"{split}/{split}_cont_depth_loss", loss_contra.avg, epoch+1)
+            writer.add_scalar(f"{split}/{split}_total_loss", loss_total.avg, epoch+1)
+            if split != 'test':
+                writer.add_scalar(f"{split}/{split}_threshold", val_threshold, epoch+1)
+            else:
+                writer.add_scalar(f"{split}/val_threshold", val_threshold, epoch+1)
+            writer.add_scalar(f"{split}/{split}_ACC", train_ACC, epoch+1)
+            writer.add_scalar(f"{split}/{split}_APCER", train_APCER, epoch+1)
+            writer.add_scalar(f"{split}/{split}_BPCER", train_BPCER, epoch+1)
+            writer.add_scalar(f"{split}/{split}_ACER", train_ACER, epoch+1)
+
         # print('epoch:%d, Train: train_threshold=%.4f, train_ACC=%.4f, train_APCER=%.4f, train_BPCER=%.4f, train_ACER=%.4f' % (epoch+1, train_threshold, train_ACC, train_APCER, train_BPCER, train_ACER))
-        log_msg = 'epoch:%d, Eval %s - Absolute_Depth_loss=%.4f, Contrastive_Depth_loss=%.4f, threshold=%.4f, ACC=%.4f, APCER=%.4f, BPCER=%.4f, ACER=%.4f' % (epoch+1, split.upper(), loss_absolute.avg, loss_contra.avg, val_threshold, train_ACC, train_APCER, train_BPCER, train_ACER)
+        log_msg = 'epoch: %d, Eval %s - Absolute_Depth_loss=%.4f, Contrastive_Depth_loss=%.4f, Total_loss=%.4f, threshold=%.4f, ACC=%.4f, APCER=%.4f, BPCER=%.4f, ACER=%.4f' % (epoch+1, split.upper(), loss_absolute.avg, loss_contra.avg, loss_total.avg, val_threshold, train_ACC, train_APCER, train_BPCER, train_ACER)
         print(log_msg)
         # log_file.write('\nepoch:%d, Train: train_threshold=%.4f, train_ACC=%.4f, train_APCER=%.4f, train_BPCER=%.4f, train_ACER=%.4f' % (epoch+1, train_threshold, train_ACC, train_APCER, train_BPCER, train_ACER))
         log_file.write(log_msg + '\n')
@@ -226,11 +255,13 @@ def train_test():
     # GPU  & log file  -->   if use DataParallel, please comment this command
     #os.environ["CUDA_VISIBLE_DEVICES"] = "%d" % (args.gpu)
     experiment_folder = os.path.dirname(__file__) + '/logs/' + args.log + '_' + datetime.now().strftime('%Y-%m-%d_%H-%M-%S')
+    if args.suffix != '': experiment_folder += '_' + args.suffix
     isExists = os.path.exists(experiment_folder)
     if not isExists:
         os.makedirs(experiment_folder)
     log_file_name = experiment_folder + '/' + args.log+'_log_P1.txt'
     log_file = open(log_file_name, 'w')
+    writer = SummaryWriter(log_dir=os.path.join(experiment_folder, "tensorboard"))
     
     echo_batches = args.echo_batches
 
@@ -286,28 +317,28 @@ def train_test():
         if (epoch + 1) % args.step_size == 0:
             lr *= args.gamma
 
-        train_one_epoch(args, epoch, lr, model, optimizer, criterion_absolute_loss, criterion_contrastive_loss, experiment_folder, log_file)
+        train_one_epoch(args, epoch, lr, model, optimizer, criterion_absolute_loss, criterion_contrastive_loss, experiment_folder, writer, log_file)
 
         ###########################################
         '''           evaluate train            '''
         ###########################################
         train_data = Spoofing_valtest(train_list, train_image_dir, map_dir, transform=transforms.Compose([Normaliztion_valtest(), ToTensor_valtest()]))
         dataloader_val = DataLoader(train_data, batch_size=1, shuffle=False, num_workers=4)
-        _ = eval_model('train', args, epoch, model, dataloader_val, None, optimizer, criterion_absolute_loss, criterion_contrastive_loss, experiment_folder, log_file)
+        _ = eval_model('train', args, epoch, model, dataloader_val, None, optimizer, criterion_absolute_loss, criterion_contrastive_loss, experiment_folder, writer, log_file)
 
         ###########################################
         '''                  val                '''
         ###########################################
         val_data = Spoofing_valtest(val_list, val_image_dir, val_map_dir, transform=transforms.Compose([Normaliztion_valtest(), ToTensor_valtest()]))
         dataloader_val = DataLoader(val_data, batch_size=1, shuffle=False, num_workers=4)
-        val_threshold = eval_model('val', args, epoch, model, dataloader_val, None, optimizer, criterion_absolute_loss, criterion_contrastive_loss, experiment_folder, log_file)
+        val_threshold = eval_model('val', args, epoch, model, dataloader_val, None, optimizer, criterion_absolute_loss, criterion_contrastive_loss, experiment_folder, writer, log_file)
 
         ###########################################
         '''                 test                '''
         ###########################################
         test_data = Spoofing_valtest(test_list, test_image_dir, test_map_dir, transform=transforms.Compose([Normaliztion_valtest(), ToTensor_valtest()]))
         dataloader_test = DataLoader(test_data, batch_size=1, shuffle=False, num_workers=4)
-        _ = eval_model('test', args, epoch, model, dataloader_test, val_threshold, optimizer, criterion_absolute_loss, criterion_contrastive_loss, experiment_folder, log_file)
+        _ = eval_model('test', args, epoch, model, dataloader_test, val_threshold, optimizer, criterion_absolute_loss, criterion_contrastive_loss, experiment_folder, writer, log_file)
 
         log_msg = '--------------------------'
         print(log_msg)
@@ -334,6 +365,7 @@ if __name__ == "__main__":
     parser.add_argument('--echo_batches', type=int, default=50, help='how many batches display once')  # 50
     parser.add_argument('--epochs', type=int, default=1400, help='total training epochs')
     parser.add_argument('--log', type=str, default="CDChannels_CNpp_P1_1RandomFrame", help='log and save model name')
+    parser.add_argument('--suffix', type=str, default="", help='')
     parser.add_argument('--finetune', action='store_true', default=False, help='whether finetune other models')
 
     args = parser.parse_args()
